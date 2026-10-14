@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Physiotherapy Exercises - PhysioVeda</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .exercise-container {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            max-width: 800px;
+            margin: 2rem auto;
+            animation: fadeInUp 1s ease-out;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .exercise-container:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            background: linear-gradient(135deg, #9b4dca, #ff6b6b);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            box-shadow: 0 8px 25px rgba(155, 77, 202, 0.3);
+            overflow: hidden;
+            position: relative;
+        }
+
+        .back-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #ff6b6b, #9b4dca);
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 12px 30px rgba(155, 77, 202, 0.5),
+                       0 0 20px rgba(255, 107, 107, 0.3);
+        }
+
+        .back-btn:hover::before {
+            opacity: 1;
+        }
+
+        .exercise-container h2 {
+            color: #fff;
+            margin-bottom: 1.5rem;
+            font-size: 2rem;
+            text-align: center;
+            background: linear-gradient(45deg, #9b4dca, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-size: 200% 200%;
+            transition: all 0.5s ease;
+        }
+
+        .exercise-container h2:hover {
+            background-position: 100% 100%;
+            transform: scale(1.02);
+        }
+
+        .video-container {
+            width: 100%;
+            max-width: 600px;
+            margin: 0 auto 2rem;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .video-container:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+        }
+
+        .video-container video {
+            width: 100%;
+            display: block;
+        }
+
+        .description-container {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 2rem;
+            border-radius: 10px;
+            margin-top: 2rem;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .description-container:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-3px);
+        }
+
+        .description-container h3 {
+            color: #fff;
+            margin-bottom: 1rem;
+            font-size: 1.5rem;
+            background: linear-gradient(45deg, #9b4dca, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .description-container p {
+            color: #fff;
+            line-height: 1.6;
+        }
+
+        .precautions {
+            margin-top: 2rem;
+            padding: 1.5rem;
+            background: rgba(255, 107, 107, 0.1);
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 107, 107, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .precautions:hover {
+            background: rgba(255, 107, 107, 0.15);
+            transform: translateY(-3px);
+        }
+
+        .precautions h3 {
+            color: #ff6b6b;
+            margin-bottom: 1rem;
+            font-size: 1.3rem;
+        }
+
+        .precautions ul {
+            list-style-type: none;
+            padding: 0;
+        }
+
+        .precautions li {
+            color: rgba(255, 255, 255, 0.9);
+            margin-bottom: 0.5rem;
+            padding-left: 1.5rem;
+            position: relative;
+        }
+
+        .precautions li:before {
+            content: "⚠️";
+            position: absolute;
+            left: 0;
+        }
+
+        .control-btn {
+            background: linear-gradient(135deg, #9b4dca, #ff6b6b);
+            color: white;
+            border: none;
+            padding: 1.2rem 2.5rem;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(155, 77, 202, 0.4);
+            margin: 0 auto;
+        }
+
+        .control-btn i {
+            font-size: 1.3rem;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .control-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #ff6b6b, #9b4dca);
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .control-btn::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+            opacity: 0;
+            transform: scale(0);
+            transition: transform 0.6s ease, opacity 0.4s ease;
+        }
+
+        .control-btn:hover {
+            transform: translateY(-5px) scale(1.02);
+            box-shadow: 0 15px 30px rgba(155, 77, 202, 0.6),
+                       0 0 30px rgba(255, 107, 107, 0.4);
+        }
+
+        .control-btn:hover::before {
+            opacity: 1;
+        }
+
+        .control-btn:hover::after {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .control-btn:hover i {
+            transform: rotate(360deg) scale(1.2);
+        }
+
+        .control-btn:active {
+            transform: translateY(2px) scale(0.98);
+            box-shadow: 0 5px 15px rgba(155, 77, 202, 0.4);
+        }
+
+        @keyframes buttonPulse {
+            0% {
+                box-shadow: 0 8px 25px rgba(155, 77, 202, 0.4);
+            }
+            50% {
+                box-shadow: 0 15px 35px rgba(155, 77, 202, 0.6),
+                           0 0 30px rgba(255, 107, 107, 0.4);
+            }
+            100% {
+                box-shadow: 0 8px 25px rgba(155, 77, 202, 0.4);
+            }
+        }
+
+        .control-btn {
+            animation: buttonPulse 2s infinite;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 3rem !important;
+        }
+    </style>
+</head>
+<body>
+    <button class="back-btn" onclick="window.location.href='dropdown.html'">
+        <i class="fas fa-arrow-left"></i> Back to Selection
+    </button>
+    
+    <div class="container">
+        <div class="exercise-container">
+            <h2 id="injuryTitle">Loading...</h2>
+            <div class="video-container">
+                <video id="exerciseVideo" controls>
+                    Your browser does not support the video tag.
+                </video>
+            </div>
+            <div class="description-container">
+                <h3>Exercise Description</h3>
+                <p id="exerciseDescription">Loading...</p>
+            </div>
+            <div class="precautions">
+                <h3>Important Precautions</h3>
+                <ul id="precautionsList">
+                    <li>Loading...</li>
+                </ul>
+            </div>
+            <div class="controls" style="margin-top: 2rem;">
+                <button class="control-btn" onclick="startPoseCorrection()">
+                    <i class="fas fa-camera"></i> Start Real-time Pose Correction
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Exercise data for each injury
+        const exerciseData = {
+            neck: {
+                title: "Neck Strech Pain Relief Exercises",
+                video: "videos/neck-exercises.mp4",
+                description: "Sit or stand with a straight back. Slowly tilt your head to one side , bringing your ear toward your shoulder. Hold for 10-15 seconds. Repeat on the other side. Do 3-5 repetitions per side.",
+                precautions: [
+                    "Stop immediately if you feel sharp pain",
+                    "Keep movements slow and controlled",
+                    "Don't overextend your neck",
+                    "Maintain good posture throughout"
+                ]
+            },
+            shoulders: {
+                title: "Shoulder Rehabilitation Exercises called Shoulder Rolls",
+                video: "videos/shoulder-exercises.mp4",
+                description: "Stand or sit upright. Slowly roll your shoulders forward in a circular motion 10 times. Then roll them backward 10 times. Repeat this 2-3 times.",
+                precautions: [
+                    "Avoid sudden movements",
+                    "Keep your back straight",
+                    "Don't lift heavy weights initially",
+                    "Stop if you feel any discomfort"
+                ]
+            },
+            elbow: {
+                title: "Elbow Pain Relief Exercise called Wrist Flexor Stretch",
+                video: "videos/elbow-exercises.mp4",
+                description: "Extend your arm in frontwith your palm facing up. Use the opposite hand to gently pull back your fingers towards the body. Hold for 15-20 seconds and switch sides. Repeat 3 times per side.",
+                precautions: [
+                    "Use light resistance only",
+                    "Avoid gripping too tightly",
+                    "Keep your wrist straight",
+                    "Don't overextend your elbow"
+                ]
+            },
+            wrist: {
+                title: "Wrist Strengthening Exercises called Wrist Circles",
+                video: "videos/wrist-exercises.mp4",
+                description: "Extend your arms in front and slowly rotate your wrists in circles. Do 10 circles clockwise and 10 circles anticlockwise. Repeat 2-3 times.",
+                precautions: [
+                    "Avoid sudden wrist movements",
+                    "Keep movements controlled",
+                    "Don't force any positions",
+                    "Stop if you feel pain"
+                ]
+            },
+            knee: {
+                title: "Knee Rehabilitation Exercises called Straight Leg Raises",
+                video: "videos/knee-exercises.mp4",
+                description: "Lie on your back with one leg bent and other straight.Slowly lift the straight leg to knee height. Hold for 5 seconds and lower. Do 15-20 reps per leg",
+                precautions: [
+                    "Avoid high-impact activities",
+                    "Keep your knee aligned",
+                    "Don't lock your knee",
+                    "Stop if you feel instability"
+                ]
+            },
+            ankle: {
+                title: "Ankle Strengthening Exercises called Ankle Rotations",
+                video: "videos/ankle-exercises.mp4",
+                description: "Sit comfortabely with one leg extended. Rotate your ankle in a circular motion 10 times clockwise and 10 times anticlockwise, Repeat on the ither ankle.",
+                precautions: [
+                    "Use a stable surface",
+                    "Keep movements controlled",
+                    "Don't overstretch",
+                    "Stop if you feel pain"
+                ]
+            }
+        };
+
+        // Get the injury from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const injury = urlParams.get('injury');
+
+        // Update the page content based on the selected injury
+        function updatePage() {
+            if (injury && exerciseData[injury]) {
+                const data = exerciseData[injury];
+                
+                // Update title
+                document.getElementById('injuryTitle').textContent = data.title;
+                
+                // Update video
+                const video = document.getElementById('exerciseVideo');
+                video.src = data.video;
+                
+                // Update description
+                document.getElementById('exerciseDescription').textContent = data.description;
+                
+                // Update precautions
+                const precautionsList = document.getElementById('precautionsList');
+                precautionsList.innerHTML = data.precautions.map(precaution => 
+                    `<li>${precaution}</li>`
+                ).join('');
+            } else {
+                // Handle invalid injury
+                document.getElementById('injuryTitle').textContent = "Invalid Selection";
+                document.getElementById('exerciseDescription').textContent = "Please go back and select a valid injury.";
+            }
+        }
+
+        // Call updatePage when the page loads
+        window.onload = updatePage;
+
+        // Add this function to handle pose correction navigation
+        function startPoseCorrection() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const injury = urlParams.get('injury');
+            if (!injury) {
+                alert('Please select an exercise first');
+                return;
+            }
+            console.log('Starting pose correction for:', injury); // Debug log
+            window.location.href = `pose-correction.html?injury=${injury}`;
+        }
+    </script>
+</body>
+</html> 
