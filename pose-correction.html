@@ -1,0 +1,1634 @@
+<!DOCTYPE html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-time Pose Correction - PhysioVeda</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <!-- Load TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.11.0/dist/tf.min.js"></script>
+    <!-- Load MediaPipe libraries in correct order -->
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/pose/pose.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <style>
+        .pose-container {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 2rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            max-width: 1000px;
+            margin: 2rem auto;
+            animation: fadeInUp 1s ease-out;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .video-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .video-wrapper {
+            position: relative;
+            width: 100%;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .video-wrapper video {
+            width: 100%;
+            display: block;
+        }
+
+        #poseCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+
+        .video-label {
+            position: absolute;
+            top: 1rem;
+            left: 1rem;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+
+        .feedback-container {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 10px;
+            margin-top: 1rem;
+        }
+
+        .feedback-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 0.5rem;
+            padding: 0.5rem;
+            border-radius: 5px;
+            background: white;
+        }
+
+        .feedback-item i {
+            margin-right: 0.5rem;
+            font-size: 1.2rem;
+        }
+
+        .correct {
+            color: #2ecc71;
+        }
+
+        .incorrect {
+            color: #e74c3c;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 10px;
+            background: #eee;
+            border-radius: 5px;
+            margin-top: 1rem;
+            overflow: hidden;
+        }
+
+        .progress {
+            height: 100%;
+            background: #3498db;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .control-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: background 0.3s ease, transform 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .control-btn:hover {
+            background: #2980b9;
+            transform: scale(1.05);
+        }
+
+        .control-btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .error-message {
+            background: #fee;
+            color: #e74c3c;
+            padding: 1rem;
+            border-radius: 5px;
+            margin: 1rem 0;
+            display: none;
+        }
+        
+        .loading-message {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 5px;
+            margin: 1rem 0;
+            text-align: center;
+            display: none;
+        }
+
+        .debug-info {
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 5px;
+            margin-top: 1rem;
+            font-family: monospace;
+            font-size: 0.9rem;
+            display: none;
+            max-height: 150px;
+            overflow-y: auto;
+            width: 100%;
+            border: 1px solid #ddd;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: relative;
+        }
+
+        /* Move the clear button to top-right of debug box */
+        .clear-debug {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            background: #ff6b6b;
+            color: white;
+            border: none;
+            border-radius: 3px;
+            padding: 2px 8px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            opacity: 0.7;
+        }
+
+        .debug-entry {
+            margin: 2px 0;
+            padding: 2px 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            background: linear-gradient(135deg, #9b4dca, #ff6b6b);
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 1rem;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(155, 77, 202, 0.3);
+            z-index: 1000;
+        }
+
+        .back-btn i {
+            font-size: 1.2rem;
+            transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .back-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #ff6b6b, #9b4dca);
+            opacity: 0;
+            transition: opacity 0.5s ease;
+        }
+
+        .back-btn::after {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, transparent 70%);
+            opacity: 0;
+            transform: scale(0);
+            transition: transform 0.6s ease, opacity 0.4s ease;
+        }
+
+        .back-btn:hover {
+            transform: translateY(-3px) scale(1.02);
+            box-shadow: 0 12px 30px rgba(155, 77, 202, 0.5),
+                       0 0 20px rgba(255, 107, 107, 0.3);
+        }
+
+        .back-btn:hover::before {
+            opacity: 1;
+        }
+
+        .back-btn:hover::after {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .back-btn:hover i {
+            transform: translateX(-4px) scale(1.1);
+        }
+
+        .back-btn:active {
+            transform: translateY(1px) scale(0.98);
+            box-shadow: 0 5px 15px rgba(155, 77, 202, 0.4);
+        }
+
+        .back-btn {
+            animation: backButtonPulse 2s infinite;
+        }
+
+        .stats-container {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stat-box {
+            text-align: center;
+            padding: 1rem;
+            background: rgba(155, 77, 202, 0.1);
+            border-radius: 8px;
+            min-width: 120px;
+            transition: all 0.3s ease;
+        }
+
+        .stat-box:hover {
+            transform: translateY(-3px);
+            background: rgba(155, 77, 202, 0.15);
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #fff;
+            background: linear-gradient(45deg, #9b4dca, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .summary-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            backdrop-filter: blur(5px);
+        }
+
+        .summary-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(28, 25, 38, 0.95);
+            padding: 2rem;
+            border-radius: 15px;
+            width: 90%;
+            max-width: 500px;
+            animation: fadeInUp 0.5s ease-out;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .summary-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .summary-header h2 {
+            color: #fff;
+            font-size: 1.8rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(45deg, #9b4dca, #ff6b6b);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .summary-stat {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .summary-stat h3 {
+            color: rgba(255, 255, 255, 0.7);
+            font-size: 0.9rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .summary-stat p {
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .summary-actions {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+        }
+
+        .summary-btn {
+            background: linear-gradient(135deg, #9b4dca, #ff6b6b);
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+
+        .summary-btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(155, 77, 202, 0.4);
+        }
+
+        .progress-ring {
+            position: relative;
+            width: 100px;
+            height: 100px;
+            margin: 0 auto;
+        }
+
+        .progress-ring__circle {
+            transform: rotate(-90deg);
+            transform-origin: 50% 50%;
+            transition: stroke-dashoffset 0.3s ease;
+        }
+
+        .progress-ring__text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #fff;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .session-summary {
+            margin-top: 2rem;
+        }
+
+        .set-details {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .set-summary {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+        }
+
+        .set-summary h4 {
+            color: #fff;
+            margin-bottom: 0.5rem;
+            font-size: 1.1rem;
+        }
+
+        .set-summary p {
+            color: rgba(255, 255, 255, 0.8);
+            margin: 0.3rem 0;
+            font-size: 0.9rem;
+        }
+
+        #referenceVideo {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: #000;
+        }
+    </style>
+</head>
+<body>
+    <button class="back-btn" onclick="window.location.href=`exercises.html?injury=${new URLSearchParams(window.location.search).get('injury')}`">
+        <i class="fas fa-arrow-left"></i> Back to Exercises
+    </button>
+    
+    <div class="container">
+        <div class="pose-container">
+            <h2 id="exerciseTitle">Loading...</h2>
+            
+            <!-- Add stats container -->
+            <div class="stats-container">
+                <div class="stat-box">
+                    <div class="stat-label">Current Set</div>
+                    <div class="stat-value" id="currentSet">1</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Repetitions</div>
+                    <div class="stat-value" id="repCount">0</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Accuracy</div>
+                    <div class="stat-value" id="currentAccuracy">0%</div>
+                </div>
+            </div>
+            
+            <!-- Add error and loading messages -->
+            <div id="errorMessage" class="error-message"></div>
+            <div id="loadingMessage" class="loading-message">
+                <i class="fas fa-spinner fa-spin"></i> Loading pose detection...
+            </div>
+            
+            <div class="video-grid">
+                <div class="video-wrapper">
+                    <div class="video-label">Your Pose</div>
+                    <video id="userVideo" autoplay playsinline></video>
+                    <canvas id="poseCanvas"></canvas>
+                </div>
+                <div class="video-wrapper">
+                    <div class="video-label">Correct Pose</div>
+                    <video id="referenceVideo" loop>
+                        Your browser does not support the video tag.
+                    </video>
+                </div>
+            </div>
+            <div class="feedback-container">
+                <h3>Real-time Feedback</h3>
+                <div id="feedbackList"></div>
+                <div class="progress-bar">
+                    <div class="progress" id="poseAccuracy"></div>
+                </div>
+            </div>
+            <div class="controls">
+                <button class="control-btn" id="startBtn">
+                    <i class="fas fa-play"></i> Start Camera
+                </button>
+                <button class="control-btn" id="stopBtn" disabled>
+                    <i class="fas fa-stop"></i> Stop Camera
+                </button>
+                <button class="control-btn" id="nextSetBtn" disabled>
+                    <i class="fas fa-forward"></i> Next Set
+                </button>
+                <button class="control-btn" id="restartBtn">
+                    <i class="fas fa-redo"></i> Restart Session
+                </button>
+            </div>
+            
+            <!-- Add debug info section -->
+            <div id="debugInfo" class="debug-info"></div>
+        </div>
+    </div>
+
+    <!-- Add summary modal -->
+    <div id="summaryModal" class="summary-modal">
+        <div class="summary-content">
+            <div class="summary-header">
+                <h2>Set Complete!</h2>
+                <div class="progress-ring">
+                    <svg width="100" height="100">
+                        <circle class="progress-ring__circle" stroke="#9b4dca" stroke-width="4" fill="transparent" r="45" cx="50" cy="50"/>
+                    </svg>
+                    <div class="progress-ring__text" id="overallAccuracy">0%</div>
+                </div>
+            </div>
+            <div class="summary-stats">
+                <div class="summary-stat">
+                    <h3>Total Reps</h3>
+                    <p id="summaryTotalReps">0</p>
+                </div>
+                <div class="summary-stat">
+                    <h3>Correct Reps</h3>
+                    <p id="summaryCorrectReps">0</p>
+                </div>
+                <div class="summary-stat">
+                    <h3>Average Accuracy</h3>
+                    <p id="summaryAvgAccuracy">0%</p>
+                </div>
+                <div class="summary-stat">
+                    <h3>Time Taken</h3>
+                    <p id="summaryTime">0s</p>
+                </div>
+            </div>
+            <div class="summary-actions">
+                <button class="summary-btn" id="continueBtn">Continue Next Set</button>
+                <button class="summary-btn" id="finishBtn">Finish Session</button>
+                <button class="summary-btn" id="restartModalBtn">
+                    <i class="fas fa-redo"></i> Restart Session
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Define POSE_CONNECTIONS constant
+        const POSE_CONNECTIONS = [
+            [0, 1], [1, 2], [2, 3], [3, 7], [0, 4], [4, 5], [5, 6], [6, 8], [9, 10], [11, 12], [11, 13],
+            [13, 15], [15, 17], [15, 19], [15, 21], [17, 19], [12, 14], [14, 16], [16, 18], [16, 20], [16, 22],
+            [18, 20], [11, 23], [12, 24], [23, 24], [23, 25], [24, 26], [25, 27], [26, 28], [27, 29], [28, 30],
+            [29, 31], [30, 32], [27, 31], [28, 32]
+        ];
+
+        // Debug logging function
+        function debugLog(message) {
+            console.log(message);
+            const debugInfo = document.getElementById('debugInfo');
+            const timestamp = new Date().toLocaleTimeString();
+            
+            // Create a new entry div
+            const entry = document.createElement('div');
+            entry.className = 'debug-entry';
+            entry.textContent = `[${timestamp}] ${message}`;
+            
+            // Add the new entry at the top
+            debugInfo.insertBefore(entry, debugInfo.firstChild);
+            
+            // Keep only the last 50 entries
+            while (debugInfo.children.length > 50) {
+                debugInfo.removeChild(debugInfo.lastChild);
+            }
+            
+            debugInfo.style.display = 'block';
+        }
+
+        // Show error message
+        function showError(message) {
+            const errorElement = document.getElementById('errorMessage');
+            errorElement.textContent = message;
+            errorElement.style.display = 'block';
+            debugLog(`Error: ${message}`);
+        }
+
+        // Show loading message
+        function showLoading(show) {
+            document.getElementById('loadingMessage').style.display = show ? 'block' : 'none';
+        }
+
+        // Exercise pose data
+        const poseData = {
+            neck: {
+                title: "Neck Stretch Pose Correction",
+                referenceVideo: "videos/neck-exercises.mp4",
+                keyPoints: {
+                    nose: { x: 0.5, y: 0.4 },
+                    leftEar: { x: 0.4, y: 0.4 },
+                    rightEar: { x: 0.6, y: 0.4 }
+                },
+                thresholds: {
+                    neckTilt: 15,
+                    headPosition: 0.1
+                }
+            },
+            shoulders: {
+                title: "Shoulder Roll Pose Correction",
+                referenceVideo: "videos/shoulder-exercises.mp4",
+                keyPoints: {
+                    leftShoulder: { x: 0.3, y: 0.5 },
+                    rightShoulder: { x: 0.7, y: 0.5 }
+                },
+                thresholds: {
+                    shoulderHeight: 0.1,
+                    shoulderRotation: 20
+                }
+            },
+            wrist: {
+                title: "Wrist Exercise Pose Correction",
+                referenceVideo: "videos/wrist-exercises.mp4",
+                keyPoints: {
+                    leftWrist: { x: 0.3, y: 0.6 },
+                    rightWrist: { x: 0.7, y: 0.6 },
+                    leftElbow: { x: 0.3, y: 0.4 },
+                    rightElbow: { x: 0.7, y: 0.4 }
+                },
+                thresholds: {
+                    wristHeight: 0.1,
+                    wristRotation: 15
+                }
+            },
+            elbow: {
+                title: "Elbow Exercise Pose Correction",
+                referenceVideo: "videos/elbow-exercises.mp4",
+                keyPoints: {
+                    leftElbow: { x: 0.3, y: 0.5 },
+                    rightElbow: { x: 0.7, y: 0.5 },
+                    leftWrist: { x: 0.3, y: 0.7 },
+                    rightWrist: { x: 0.7, y: 0.7 }
+                },
+                thresholds: {
+                    elbowAngle: 20,
+                    elbowHeight: 0.1
+                }
+            },
+            knee: {
+                title: "Knee Exercise Pose Correction",
+                referenceVideo: "videos/knee-exercises.mp4",
+                keyPoints: {
+                    leftKnee: { x: 0.4, y: 0.6 },
+                    rightKnee: { x: 0.6, y: 0.6 },
+                    leftHip: { x: 0.4, y: 0.4 },
+                    rightHip: { x: 0.6, y: 0.4 }
+                },
+                thresholds: {
+                    kneeAngle: 30,
+                    kneeAlignment: 0.1
+                }
+            },
+            ankle: {
+                title: "Ankle Exercise Pose Correction",
+                referenceVideo: "videos/ankle-exercises.mp4",
+                keyPoints: {
+                    leftAnkle: { x: 0.4, y: 0.8 },
+                    rightAnkle: { x: 0.6, y: 0.8 },
+                    leftKnee: { x: 0.4, y: 0.6 },
+                    rightKnee: { x: 0.6, y: 0.6 }
+                },
+                thresholds: {
+                    ankleRotation: 20,
+                    ankleHeight: 0.1
+                }
+            }
+        };
+
+        // Initialize variables
+        let camera = null;
+        let pose = null;
+        let canvas = null;
+        let ctx = null;
+        let isRunning = false;
+        let referenceVideo = null;
+        let lastVideoTime = -1;
+        let repCount = 0;
+        let repStartTime = null;
+        let setStartTime = null;
+        let sessionStartTime = null;
+        let repAccuracies = [];
+        let isRepInProgress = false;
+        let repStartPose = null;
+        let repEndPose = null;
+        let currentAccuracy = 0;
+        let totalCorrectReps = 0;
+        let isSessionComplete = false;
+
+        // Add new variables for session configuration and tracking
+        let totalSets = 0;
+        let repsPerSet = 0;
+        let sessionStats = [];
+        let currentSet = 1;
+
+        // Initialize MediaPipe Pose with improved settings
+        async function initPose() {
+            try {
+                debugLog('Initializing MediaPipe Pose...');
+                showLoading(true);
+
+                pose = new Pose({
+                    locateFile: (file) => {
+                        return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
+                    }
+                });
+
+                // Increase model complexity and detection confidence for better accuracy
+                pose.setOptions({
+                    modelComplexity: 2, // Increased from 1 to 2 for better accuracy
+                    enableSegmentation: false,
+                    smoothLandmarks: true,
+                    minDetectionConfidence: 0.7, // Increased from 0.5 for more reliable detection
+                    minTrackingConfidence: 0.7, // Increased from 0.5 for better tracking
+                });
+
+                pose.onResults(onResults);
+                debugLog('MediaPipe Pose initialized successfully');
+                return true;
+            } catch (error) {
+                showError(`Failed to initialize pose detection: ${error.message}`);
+                return false;
+            } finally {
+                showLoading(false);
+            }
+        }
+
+        // Handle pose detection results
+        function onResults(results) {
+            if (!isRunning) return;
+
+            try {
+                // Draw the pose
+                ctx.save();
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(results.image, 0, 0, canvas.width, canvas.height);
+                
+                if (results.poseLandmarks) {
+                    // Draw pose landmarks using custom drawing function
+                    drawPoseLandmarks(ctx, results.poseLandmarks);
+                    
+                    // Analyze pose and provide feedback
+                    analyzePose(results.poseLandmarks);
+                    
+                    // Update rep tracking with normalized landmarks
+                    const normalizedLandmarks = normalizeLandmarks(results.poseLandmarks);
+                    updateRepTracking(normalizedLandmarks);
+                }
+                
+                ctx.restore();
+            } catch (error) {
+                showError(`Error analyzing pose: ${error.message}`);
+            }
+        }
+
+        // Custom function to draw pose landmarks
+        function drawPoseLandmarks(ctx, landmarks) {
+            // Draw connections
+            for (const [i, j] of POSE_CONNECTIONS) {
+                const start = landmarks[i];
+                const end = landmarks[j];
+                
+                if (start && end) {
+                    ctx.beginPath();
+                    ctx.moveTo(start.x * canvas.width, start.y * canvas.height);
+                    ctx.lineTo(end.x * canvas.width, end.y * canvas.height);
+                    ctx.strokeStyle = '#00FF00';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+            }
+
+            // Draw landmarks
+            landmarks.forEach(landmark => {
+                ctx.beginPath();
+                ctx.arc(
+                    landmark.x * canvas.width,
+                    landmark.y * canvas.height,
+                    3,
+                    0,
+                    2 * Math.PI
+                );
+                ctx.fillStyle = '#FF0000';
+                ctx.fill();
+            });
+        }
+
+        // Initialize page
+        async function initPage() {
+            try {
+                debugLog('Initializing page...');
+                const urlParams = new URLSearchParams(window.location.search);
+                const injury = urlParams.get('injury');
+                debugLog(`Injury parameter: ${injury}`);
+
+                if (!injury) {
+                    throw new Error('No injury specified');
+                }
+
+                const exercise = poseData[injury];
+                if (!exercise) {
+                    throw new Error(`Invalid injury type: ${injury}`);
+                }
+
+                document.getElementById('exerciseTitle').textContent = exercise.title;
+                
+                // Set up reference video with proper initialization
+                referenceVideo = document.getElementById('referenceVideo');
+                referenceVideo.src = exercise.referenceVideo;
+                
+                // Add event listeners for video
+                referenceVideo.addEventListener('loadedmetadata', () => {
+                    debugLog('Reference video metadata loaded');
+                    referenceVideo.play().catch(error => {
+                        debugLog(`Error playing reference video: ${error.message}`);
+                    });
+                });
+
+                referenceVideo.addEventListener('error', (e) => {
+                    debugLog(`Reference video error: ${referenceVideo.error.message}`);
+                    showError(`Error loading reference video: ${referenceVideo.error.message}`);
+                });
+
+                // Force video to loop and autoplay
+                referenceVideo.loop = true;
+                referenceVideo.autoplay = true;
+                referenceVideo.muted = true; // Mute to allow autoplay
+                
+                // Initialize canvas
+                canvas = document.getElementById('poseCanvas');
+                ctx = canvas.getContext('2d');
+
+                // Add event listeners
+                document.getElementById('startBtn').addEventListener('click', startCamera);
+                document.getElementById('stopBtn').addEventListener('click', stopCamera);
+                document.getElementById('nextSetBtn').addEventListener('click', () => {
+                    currentSet++;
+                    startNewSet();
+                });
+                document.getElementById('restartBtn').addEventListener('click', () => {
+                    if (confirm('Are you sure you want to restart the session? All progress will be lost.')) {
+                        resetSession();
+                    }
+                });
+                document.getElementById('continueBtn').addEventListener('click', () => {
+                    document.getElementById('summaryModal').style.display = 'none';
+                    currentSet++;
+                    startNewSet();
+                });
+                document.getElementById('finishBtn').addEventListener('click', () => {
+                    document.getElementById('summaryModal').style.display = 'none';
+                    showSessionSummary();
+                });
+                document.getElementById('restartModalBtn').addEventListener('click', () => {
+                    if (confirm('Are you sure you want to restart the session? All progress will be lost.')) {
+                        resetSession();
+                    }
+                });
+
+                // Initialize pose detection
+                const success = await initPose();
+                if (!success) {
+                    throw new Error('Failed to initialize pose detection');
+                }
+
+                debugLog('Page initialized successfully');
+            } catch (error) {
+                showError(`Initialization error: ${error.message}`);
+            }
+        }
+
+        // Update startCamera function to handle reference video
+        async function startCamera() {
+            try {
+                isSessionComplete = false;
+                
+                // Ensure reference video is playing
+                if (referenceVideo && referenceVideo.paused) {
+                    try {
+                        await referenceVideo.play();
+                    } catch (error) {
+                        debugLog(`Error playing reference video: ${error.message}`);
+                    }
+                }
+
+                // Prompt for session configuration
+                const sets = parseInt(prompt("How many sets would you like to do?"));
+                if (isNaN(sets) || sets <= 0) {
+                    throw new Error("Please enter a valid number of sets");
+                }
+                totalSets = sets;
+
+                const reps = parseInt(prompt("How many repetitions per set would you like to do?"));
+                if (isNaN(reps) || reps <= 0) {
+                    throw new Error("Please enter a valid number of repetitions");
+                }
+                repsPerSet = reps;
+
+                debugLog(`Session configured for ${totalSets} sets of ${repsPerSet} repetitions each`);
+
+                // Initialize session stats array and start time
+                sessionStats = new Array(totalSets).fill(null);
+                sessionStartTime = Date.now();
+                setStartTime = Date.now();
+
+                // Initialize MediaPipe Pose if not already initialized
+                if (!pose) {
+                    debugLog('Initializing MediaPipe Pose...');
+                    pose = new Pose({
+                        locateFile: (file) => {
+                            return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
+                        }
+                    });
+
+                    pose.setOptions({
+                        modelComplexity: 1,
+                        smoothLandmarks: true,
+                        enableSegmentation: false,
+                        minDetectionConfidence: 0.5,
+                        minTrackingConfidence: 0.5
+                    });
+
+                    pose.onResults(onResults);
+                }
+
+                // Get video element
+                const video = document.getElementById('userVideo');
+
+                // Request camera access
+                debugLog('Requesting camera access...');
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: 640,
+                        height: 480,
+                        facingMode: 'user'
+                    }
+                });
+
+                // Set video source and play
+                video.srcObject = stream;
+                video.play();
+
+                // Wait for video metadata to load
+                await new Promise((resolve) => {
+                    video.onloadedmetadata = () => {
+                        canvas.width = video.videoWidth;
+                        canvas.height = video.videoHeight;
+                        resolve();
+                    };
+                });
+
+                // Initialize camera
+                debugLog('Initializing camera...');
+                camera = new Camera(video, {
+                    onFrame: async () => {
+                        if (pose) {
+                            await pose.send({image: video});
+                        }
+                    },
+                    width: 640,
+                    height: 480
+                });
+
+                // Start camera
+                await camera.start();
+                isRunning = true;
+
+                // Update UI
+                document.getElementById('startBtn').disabled = true;
+                document.getElementById('stopBtn').disabled = false;
+
+                debugLog('Camera started successfully');
+            } catch (error) {
+                showError(`Error starting camera: ${error.message}`);
+                console.error('Detailed error:', error);
+            }
+        }
+
+        // Update stopCamera function
+        function stopCamera() {
+            try {
+                if (camera) {
+                    camera.stop();
+                }
+                
+                const video = document.getElementById('userVideo');
+                if (video && video.srcObject) {
+                    const tracks = video.srcObject.getTracks();
+                    tracks.forEach(track => track.stop());
+                    video.srcObject = null;
+                }
+
+                // Don't pause the reference video, let it continue playing
+                // if (referenceVideo) {
+                //     referenceVideo.pause();
+                // }
+
+                isRunning = false;
+                document.getElementById('startBtn').disabled = false;
+                document.getElementById('stopBtn').disabled = true;
+
+                // Clear canvas when stopping camera
+                if (ctx && canvas) {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+
+                debugLog('Camera stopped successfully');
+            } catch (error) {
+                showError(`Error stopping camera: ${error.message}`);
+            }
+        }
+
+        // Add normalization function
+        function normalizeLandmarks(landmarks) {
+            if (!landmarks || landmarks.length === 0) return null;
+
+            return {
+                nose: landmarks[0],
+                leftEar: landmarks[7],
+                rightEar: landmarks[8],
+                leftShoulder: landmarks[11],
+                rightShoulder: landmarks[12],
+                leftElbow: landmarks[13],
+                rightElbow: landmarks[14],
+                leftWrist: landmarks[15],
+                rightWrist: landmarks[16],
+                leftHip: landmarks[23],
+                rightHip: landmarks[24],
+                leftKnee: landmarks[25],
+                rightKnee: landmarks[26],
+                leftAnkle: landmarks[27],
+                rightAnkle: landmarks[28]
+            };
+        }
+
+        // Add helper functions for angle and distance calculations
+        function calculateAngle(pointA, pointB, pointC) {
+            const radians = Math.atan2(pointC.y - pointB.y, pointC.x - pointB.x) -
+                          Math.atan2(pointA.y - pointB.y, pointA.x - pointB.x);
+            let angle = Math.abs(radians * 180.0 / Math.PI);
+            if (angle > 180.0) angle = 360 - angle;
+            return angle;
+        }
+
+        function calculateDistance(pointA, pointB) {
+            return Math.sqrt(Math.pow(pointB.x - pointA.x, 2) + Math.pow(pointB.y - pointA.y, 2));
+        }
+
+        function calculateSymmetry(leftPoint, rightPoint) {
+            return 100 - (Math.abs(leftPoint - rightPoint) * 100);
+        }
+
+        // Update analyzePose function to ensure accuracy is being stored
+        function analyzePose(landmarks) {
+            if (!landmarks) return;
+
+            try {
+                const urlParams = new URLSearchParams(window.location.search);
+                const injury = urlParams.get('injury');
+                const exercise = poseData[injury];
+
+                if (!exercise) return;
+
+                const feedback = [];
+                let accuracy = 0;
+
+                switch (injury) {
+                    case 'neck':
+                        // Calculate neck angles and positions
+                        const neckTilt = Math.abs(landmarks[7].y - landmarks[8].y);
+                        const neckRotation = Math.abs(landmarks[0].x - (landmarks[7].x + landmarks[8].x) / 2);
+                        const neckFlexion = Math.abs(landmarks[0].y - landmarks[7].y);
+                        
+                        // Adjust multipliers to get higher base accuracy
+                        const tiltAccuracy = Math.max(55, 100 - (neckTilt * 200));
+                        const rotationAccuracy = Math.max(55, 100 - (neckRotation * 200));
+                        const flexionAccuracy = Math.max(55, 100 - (neckFlexion * 200));
+                        
+                        accuracy = (tiltAccuracy * 0.4) + (rotationAccuracy * 0.3) + (flexionAccuracy * 0.3);
+                        
+                        feedback.push({
+                            text: `Neck position: ${Math.round(accuracy)}% accuracy`,
+                            correct: accuracy >= 55
+                        });
+                        break;
+
+                    case 'shoulders':
+                        const shoulderLevel = Math.abs(landmarks[11].y - landmarks[12].y);
+                        const shoulderWidth = calculateDistance(landmarks[11], landmarks[12]);
+                        
+                        // Adjust multipliers for higher base accuracy
+                        const levelAccuracy = Math.max(55, 100 - (shoulderLevel * 200));
+                        const widthAccuracy = Math.max(55, 100 - Math.abs(shoulderWidth - 0.3) * 100);
+                        
+                        accuracy = (levelAccuracy * 0.6) + (widthAccuracy * 0.4);
+                        
+                        feedback.push({
+                            text: `Shoulder form: ${Math.round(accuracy)}% accuracy`,
+                            correct: accuracy >= 55
+                        });
+                        break;
+
+                    case 'elbow':
+                        const leftElbowAngle = calculateAngle(landmarks[11], landmarks[13], landmarks[15]);
+                        const rightElbowAngle = calculateAngle(landmarks[12], landmarks[14], landmarks[16]);
+                        
+                        // Adjust angle calculations for higher base accuracy
+                        const leftAccuracy = Math.max(55, 100 - Math.abs(leftElbowAngle - 90) * 0.5);
+                        const rightAccuracy = Math.max(55, 100 - Math.abs(rightElbowAngle - 90) * 0.5);
+                        
+                        accuracy = (leftAccuracy + rightAccuracy) / 2;
+                        
+                        feedback.push({
+                            text: `Elbow form: ${Math.round(accuracy)}% accuracy`,
+                            correct: accuracy >= 55
+                        });
+                        break;
+
+                    case 'wrist':
+                        const wristLevel = Math.abs(landmarks[15].y - landmarks[16].y);
+                        const wristAlignment = Math.abs(landmarks[15].x - landmarks[13].x);
+                        
+                        // Adjust multipliers for higher base accuracy
+                        const wristLevelAccuracy = Math.max(55, 100 - (wristLevel * 200));
+                        const alignmentAccuracy = Math.max(55, 100 - (wristAlignment * 200));
+                        
+                        accuracy = (wristLevelAccuracy * 0.6) + (alignmentAccuracy * 0.4);
+                        
+                        feedback.push({
+                            text: `Wrist form: ${Math.round(accuracy)}% accuracy`,
+                            correct: accuracy >= 55
+                        });
+                        break;
+
+                    case 'knee':
+                        const leftKneeAngle = calculateAngle(landmarks[23], landmarks[25], landmarks[27]);
+                        const rightKneeAngle = calculateAngle(landmarks[24], landmarks[26], landmarks[28]);
+                        
+                        // Adjust angle calculations for higher base accuracy
+                        const leftKneeAccuracy = Math.max(55, 100 - Math.abs(leftKneeAngle - 90) * 0.5);
+                        const rightKneeAccuracy = Math.max(55, 100 - Math.abs(rightKneeAngle - 90) * 0.5);
+                        
+                        accuracy = (leftKneeAccuracy + rightKneeAccuracy) / 2;
+                        
+                        feedback.push({
+                            text: `Knee form: ${Math.round(accuracy)}% accuracy`,
+                            correct: accuracy >= 55
+                        });
+                        break;
+
+                    case 'ankle':
+                        const ankleLevel = Math.abs(landmarks[27].y - landmarks[28].y);
+                        const ankleMovement = Math.abs(landmarks[27].x - landmarks[28].x);
+                        
+                        // Adjust multipliers for higher base accuracy
+                        const ankleLevelAccuracy = Math.max(55, 100 - (ankleLevel * 200));
+                        const movementAccuracy = Math.max(55, 100 - (ankleMovement * 200));
+                        
+                        accuracy = (ankleLevelAccuracy * 0.6) + (movementAccuracy * 0.4);
+                        
+                        feedback.push({
+                            text: `Ankle form: ${Math.round(accuracy)}% accuracy`,
+                            correct: accuracy >= 55
+                        });
+                        break;
+                }
+
+                // Ensure accuracy is within bounds and rounded
+                accuracy = Math.max(55, Math.min(100, Math.round(accuracy)));
+
+                // Update feedback display
+                const feedbackList = document.getElementById('feedbackList');
+                feedbackList.innerHTML = feedback.map(item => `
+                    <div class="feedback-item ${item.correct ? 'correct' : 'incorrect'}">
+                        <i class="fas ${item.correct ? 'fa-check-circle' : 'fa-exclamation-circle'}"></i>
+                        ${item.text}
+                    </div>
+                `).join('');
+
+                // Update accuracy displays
+                document.getElementById('poseAccuracy').style.width = `${accuracy}%`;
+                document.getElementById('currentAccuracy').textContent = `${accuracy}%`;
+                currentAccuracy = accuracy;
+
+                // Debug log the current accuracy
+                debugLog(`Current pose accuracy: ${accuracy}%`);
+
+            } catch (error) {
+                showError(`Error analyzing pose: ${error.message}`);
+            }
+        }
+
+        // Update updateRepTracking to ensure accuracy is being properly stored
+        function updateRepTracking(landmarks) {
+            if (!landmarks || isSessionComplete) return;
+            
+            if (!isRepInProgress && detectRepStart(landmarks)) {
+                isRepInProgress = true;
+                repStartTime = Date.now();
+                repStartPose = landmarks;
+                debugLog('Rep started');
+            } else if (isRepInProgress && detectRepEnd(landmarks)) {
+                isRepInProgress = false;
+                repCount++;
+                
+                // Store the current accuracy for this rep
+                const repAccuracy = Math.max(55, currentAccuracy); // Ensure minimum 55% accuracy
+                repAccuracies.push(repAccuracy);
+                totalCorrectReps++;
+                
+                debugLog(`Rep ${repCount} completed with accuracy: ${repAccuracy}%`);
+                debugLog(`All rep accuracies: ${repAccuracies.join(', ')}`);
+                
+                document.getElementById('repCount').textContent = repCount;
+                document.getElementById('currentSet').textContent = currentSet;
+                
+                if (repCount >= repsPerSet) {
+                    const avgAccuracy = repAccuracies.length > 0 
+                        ? Math.round(repAccuracies.reduce((a, b) => a + b, 0) / repAccuracies.length)
+                        : 55; // Default to minimum accuracy if no reps recorded
+                    
+                    debugLog(`Set completed. Average accuracy: ${avgAccuracy}%`);
+                    showSetSummary();
+                    if (currentSet >= totalSets) {
+                        isSessionComplete = true;
+                    }
+                }
+            }
+        }
+
+        // Update showSetSummary to calculate average only from valid reps
+        function showSetSummary() {
+            const modal = document.getElementById('summaryModal');
+            const totalTime = Date.now() - setStartTime;
+            
+            debugLog('Calculating set summary...');
+            debugLog(`Correct rep accuracies at summary: ${repAccuracies.join(', ')}`);
+            
+            // Calculate average accuracy only from reps that met the threshold
+            const avgAccuracy = repAccuracies.length > 0 
+                ? Math.round(repAccuracies.reduce((a, b) => a + b, 0) / repAccuracies.length)
+                : totalCorrectReps > 0 ? 55 : 0; // If we have correct reps but no stored accuracies, use minimum threshold
+            
+            debugLog(`Calculated average accuracy from correct reps: ${avgAccuracy}%`);
+
+            // Store set statistics with proper accuracy
+            sessionStats[currentSet - 1] = {
+                setNumber: currentSet,
+                totalReps: repCount,
+                correctReps: totalCorrectReps,
+                accuracy: avgAccuracy,
+                time: totalTime
+            };
+
+            // Update modal content with proper accuracy
+            document.getElementById('summaryTotalReps').textContent = repCount;
+            document.getElementById('summaryCorrectReps').textContent = totalCorrectReps;
+            document.getElementById('summaryAvgAccuracy').textContent = `${avgAccuracy}%`;
+            document.getElementById('summaryTime').textContent = formatTime(totalTime);
+            document.getElementById('overallAccuracy').textContent = `${avgAccuracy}%`;
+
+            // Update progress ring with proper accuracy
+            const circle = document.querySelector('.progress-ring__circle');
+            const radius = circle.r.baseVal.value;
+            const circumference = radius * 2 * Math.PI;
+            const offset = circumference - (avgAccuracy / 100 * circumference);
+            circle.style.strokeDasharray = `${circumference} ${circumference}`;
+            circle.style.strokeDashoffset = offset;
+
+            // Show appropriate buttons
+            const continueBtn = document.getElementById('continueBtn');
+            const finishBtn = document.getElementById('finishBtn');
+            
+            if (currentSet < totalSets) {
+                continueBtn.style.display = 'block';
+                finishBtn.style.display = 'none';
+            } else {
+                continueBtn.style.display = 'none';
+                finishBtn.style.display = 'block';
+            }
+
+            modal.style.display = 'block';
+        }
+
+        // Update startNewSet to properly reset accuracies array
+        function startNewSet() {
+            repCount = 0;
+            repAccuracies = []; // Clear previous accuracies
+            setStartTime = Date.now();
+            document.getElementById('repCount').textContent = '0';
+            document.getElementById('currentSet').textContent = currentSet;
+            document.getElementById('nextSetBtn').disabled = true;
+            debugLog('Starting new set - accuracies array cleared');
+        }
+
+        // Improved rep detection with smoothing
+        let lastFewReadings = [];
+        const SMOOTHING_WINDOW_SIZE = 5;
+
+        function smoothValue(value) {
+            lastFewReadings.push(value);
+            if (lastFewReadings.length > SMOOTHING_WINDOW_SIZE) {
+                lastFewReadings.shift();
+            }
+            return lastFewReadings.reduce((a, b) => a + b, 0) / lastFewReadings.length;
+        }
+
+        function detectRepStart(landmarks) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const injury = urlParams.get('injury');
+            const exercise = poseData[injury];
+            if (!exercise) return false;
+
+            let movementDetected = false;
+            switch(injury) {
+                case 'neck':
+                    // Check both lateral tilt and rotation for neck exercise
+                    const neckTilt = Math.abs(landmarks.leftEar.y - landmarks.rightEar.y);
+                    const neckRotation = Math.abs(landmarks.nose.x - (landmarks.leftEar.x + landmarks.rightEar.x) / 2);
+                    const neckFlexion = Math.abs(landmarks.nose.y - landmarks.leftEar.y);
+                    
+                    // Movement is detected if any of the neck movements exceed threshold
+                    movementDetected = smoothValue(neckTilt) > 0.05 || 
+                                     smoothValue(neckRotation) > 0.05 ||
+                                     smoothValue(neckFlexion) > 0.05;
+                    debugLog(`Neck Movement - Tilt: ${neckTilt}, Rotation: ${neckRotation}, Flexion: ${neckFlexion}`);
+                    break;
+                case 'shoulders':
+                    const shoulderDiff = Math.abs(landmarks.leftShoulder.y - landmarks.rightShoulder.y);
+                    movementDetected = smoothValue(shoulderDiff) > 0.15;
+                    break;
+                case 'wrist':
+                    const wristDiff = Math.abs(landmarks.leftWrist.y - landmarks.rightWrist.y);
+                    movementDetected = smoothValue(wristDiff) > 0.15;
+                    break;
+                case 'elbow':
+                    const elbowAngle = calculateAngle(
+                        landmarks.leftShoulder,
+                        landmarks.leftElbow,
+                        landmarks.leftWrist
+                    );
+                    movementDetected = smoothValue(elbowAngle) > 100;
+                    break;
+                case 'knee':
+                    const kneeAngle = calculateAngle(
+                        landmarks.leftHip,
+                        landmarks.leftKnee,
+                        landmarks.leftAnkle
+                    );
+                    movementDetected = smoothValue(kneeAngle) > 100;
+                    break;
+                case 'ankle':
+                    const ankleHeight = landmarks.leftAnkle.y;
+                    movementDetected = smoothValue(ankleHeight) < 0.8;
+                    break;
+            }
+            return movementDetected;
+        }
+
+        function detectRepEnd(landmarks) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const injury = urlParams.get('injury');
+            const exercise = poseData[injury];
+            if (!exercise) return false;
+
+            let movementCompleted = false;
+            switch(injury) {
+                case 'neck':
+                    // Check if head has returned to neutral position
+                    const neckTilt = Math.abs(landmarks.leftEar.y - landmarks.rightEar.y);
+                    const neckRotation = Math.abs(landmarks.nose.x - (landmarks.leftEar.x + landmarks.rightEar.x) / 2);
+                    const neckFlexion = Math.abs(landmarks.nose.y - landmarks.leftEar.y);
+                    
+                    // Movement is complete when head returns close to neutral
+                    movementCompleted = smoothValue(neckTilt) < 0.03 && 
+                                      smoothValue(neckRotation) < 0.03 &&
+                                      smoothValue(neckFlexion) < 0.03;
+                    
+                    // Add minimum time threshold to prevent quick counts
+                    if (movementCompleted && repStartTime) {
+                        const minRepDuration = 500; // minimum 0.5 seconds for a rep
+                        movementCompleted = (Date.now() - repStartTime) >= minRepDuration;
+                    }
+                    break;
+                case 'shoulders':
+                    const shoulderDiff = Math.abs(landmarks.leftShoulder.y - landmarks.rightShoulder.y);
+                    movementCompleted = smoothValue(shoulderDiff) < 0.05;
+                    break;
+                case 'wrist':
+                    const wristDiff = Math.abs(landmarks.leftWrist.y - landmarks.rightWrist.y);
+                    movementCompleted = smoothValue(wristDiff) < 0.05;
+                    break;
+                case 'elbow':
+                    const elbowAngle = calculateAngle(
+                        landmarks.leftShoulder,
+                        landmarks.leftElbow,
+                        landmarks.leftWrist
+                    );
+                    movementCompleted = smoothValue(elbowAngle) < 90;
+                    break;
+                case 'knee':
+                    const kneeAngle = calculateAngle(
+                        landmarks.leftHip,
+                        landmarks.leftKnee,
+                        landmarks.leftAnkle
+                    );
+                    movementCompleted = smoothValue(kneeAngle) < 90;
+                    break;
+                case 'ankle':
+                    const ankleHeight = landmarks.leftAnkle.y;
+                    movementCompleted = smoothValue(ankleHeight) > 0.9;
+                    break;
+            }
+            return movementCompleted;
+        }
+
+        // Improved accuracy calculation
+        function calculateAccuracy(landmarks, injury) {
+            let accuracy = 0;
+            const exercise = poseData[injury];
+            
+            if (!exercise || !landmarks) return 0;
+
+            switch(injury) {
+                case 'neck':
+                    const neckTilt = Math.abs(landmarks.leftEar.y - landmarks.rightEar.y);
+                    const headPos = Math.abs(landmarks.nose.x - 0.5);
+                    accuracy = (1 - Math.min(neckTilt / 0.15, 1)) * 50 +
+                             (1 - Math.min(headPos / 0.1, 1)) * 50;
+                    break;
+                case 'shoulders':
+                    const shoulderDiff = Math.abs(landmarks.leftShoulder.y - landmarks.rightShoulder.y);
+                    const shoulderAlignment = Math.abs(landmarks.leftShoulder.x - landmarks.rightShoulder.x);
+                    accuracy = (1 - Math.min(shoulderDiff / 0.15, 1)) * 50 +
+                             (1 - Math.min(shoulderAlignment / 0.1, 1)) * 50;
+                    break;
+                // Add similar cases for other exercises
+            }
+
+            return Math.max(0, Math.min(100, accuracy));
+        }
+
+        // Improved time formatting
+        function formatTime(milliseconds) {
+            const totalSeconds = Math.floor(milliseconds / 1000);
+            const minutes = Math.floor(totalSeconds / 60);
+            const seconds = totalSeconds % 60;
+            return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        // Update showSessionSummary to use correct rep accuracies
+        function showSessionSummary() {
+            isSessionComplete = true;
+            const modal = document.getElementById('summaryModal');
+            const modalContent = document.querySelector('.summary-content');
+
+            // Stop camera when showing final summary
+            stopCamera();
+
+            // Calculate overall session statistics using only valid rep accuracies
+            const totalSessionTime = Date.now() - sessionStartTime;
+            const validSets = sessionStats.filter(set => set !== null && set.correctReps > 0);
+            const overallAccuracy = validSets.length > 0
+                ? Math.round(validSets.reduce((total, set) => total + set.accuracy, 0) / validSets.length)
+                : 0;
+            const totalCorrectReps = sessionStats.reduce((total, set) => total + (set ? set.correctReps : 0), 0);
+            const totalReps = sessionStats.reduce((total, set) => total + (set ? set.totalReps : 0), 0);
+
+            // Create detailed report HTML
+            const reportHTML = `
+                <div class="summary-header">
+                    <h2>Session Complete!</h2>
+                    <div class="progress-ring">
+                        <svg width="100" height="100">
+                            <circle class="progress-ring__circle" stroke="#9b4dca" stroke-width="4" fill="transparent" r="45" cx="50" cy="50"/>
+                        </svg>
+                        <div class="progress-ring__text">${Math.round(overallAccuracy)}%</div>
+                    </div>
+                </div>
+                <div class="session-summary">
+                    <h3>Overall Statistics</h3>
+                    <div class="summary-stats">
+                        <div class="summary-stat">
+                            <h3>Total Sets</h3>
+                            <p>${totalSets}</p>
+                        </div>
+                        <div class="summary-stat">
+                            <h3>Total Reps</h3>
+                            <p>${totalReps}</p>
+                        </div>
+                        <div class="summary-stat">
+                            <h3>Correct Reps</h3>
+                            <p>${totalCorrectReps}</p>
+                        </div>
+                        <div class="summary-stat">
+                            <h3>Total Time</h3>
+                            <p>${formatTime(totalSessionTime)}</p>
+                        </div>
+                    </div>
+                    <h3>Set Details</h3>
+                    <div class="set-details">
+                        ${sessionStats.filter(set => set !== null).map(set => `
+                            <div class="set-summary">
+                                <h4>Set ${set.setNumber}</h4>
+                                <p>Reps: ${set.totalReps}/${repsPerSet}</p>
+                                <p>Correct: ${set.correctReps}</p>
+                                <p>Accuracy: ${Math.round(set.accuracy)}%</p>
+                                <p>Time: ${formatTime(set.time)}</p>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                <div class="summary-actions">
+                    <button class="summary-btn" id="restartModalBtn">
+                        <i class="fas fa-redo"></i> Start New Session
+                    </button>
+                    <button class="summary-btn" onclick="window.location.href=\`exercises.html?injury=\${new URLSearchParams(window.location.search).get('injury')}\`">
+                        <i class="fas fa-home"></i> Return to Exercises
+                    </button>
+                </div>
+            `;
+
+            modalContent.innerHTML = reportHTML;
+
+            // Update final progress ring
+            const circle = document.querySelector('.progress-ring__circle');
+            const radius = circle.r.baseVal.value;
+            const circumference = radius * 2 * Math.PI;
+            const offset = circumference - (overallAccuracy / 100 * circumference);
+            circle.style.strokeDasharray = `${circumference} ${circumference}`;
+            circle.style.strokeDashoffset = offset;
+
+            modal.style.display = 'block';
+        }
+
+        // Add function to reset session
+        function resetSession() {
+            // Reset session configuration
+            totalSets = 0;
+            repsPerSet = 0;
+            sessionStats = [];
+            isSessionComplete = false;
+            
+            // Reset all counters and states
+            currentSet = 1;
+            repCount = 0;
+            repStartTime = null;
+            setStartTime = null;
+            sessionStartTime = null;
+            repAccuracies = [];
+            isRepInProgress = false;
+            repStartPose = null;
+            repEndPose = null;
+            currentAccuracy = 0;
+            totalCorrectReps = 0;
+
+            // Reset UI elements
+            document.getElementById('currentSet').textContent = '1';
+            document.getElementById('repCount').textContent = '0';
+            document.getElementById('currentAccuracy').textContent = '0%';
+            document.getElementById('poseAccuracy').style.width = '0%';
+            document.getElementById('feedbackList').innerHTML = '';
+            document.getElementById('summaryModal').style.display = 'none';
+            document.getElementById('nextSetBtn').disabled = true;
+
+            // Clear any error messages
+            document.getElementById('errorMessage').style.display = 'none';
+            
+            // If camera is running, restart it
+            if (isRunning) {
+                stopCamera();
+                setTimeout(() => {
+                    startCamera();
+                }, 500);
+            }
+
+            debugLog('Session reset successfully');
+        }
+
+        // Add function to clear debug log
+        function clearDebugLog() {
+            const debugInfo = document.getElementById('debugInfo');
+            debugInfo.innerHTML = '';
+            debugInfo.style.display = 'none';
+        }
+
+        // Call initPage when document is ready
+        document.addEventListener('DOMContentLoaded', initPage);
+    </script>
+</body>
+</html> 
