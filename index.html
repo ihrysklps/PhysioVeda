@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PhysioVeda - Your Digital Physiotherapy Guide</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .options-section {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            padding: 2rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="logo-container">
+                <img src="images/logo.png" alt="PhysioVeda Logo" class="logo">
+            </div>
+            <h1>PhysioVeda</h1>
+            <p class="tagline">Your Digital Physiotherapy Guide</p>
+        </header>
+
+        <main>
+            <section class="welcome-section">
+                <h2>Welcome to PhysioVeda</h2>
+                <p>Find the right physiotherapy exercises for your injury</p>
+            </section>
+
+            <section class="options-section">
+                <div class="option-card" id="dropdown-option">
+                    <div class="icon-container">
+                        <i class="fas fa-list"></i>
+                    </div>
+                    <h3>Select from List</h3>
+                    <p>Choose your injury from our comprehensive dropdown menu</p>
+                    <button class="option-btn" onclick="window.location.href='dropdown.html'">Continue with List</button>
+                </div>
+
+                <div class="option-card" id="model-option">
+                    <div class="icon-container">
+                        <i class="fas fa-cube"></i>
+                    </div>
+                    <h3>3D Model Selection</h3>
+                    <p>Interact with our 3D human body model to select your injury</p>
+                    <button class="option-btn" onclick="window.location.href='model.html'">Continue with 3D Model</button>
+                </div>
+
+                <div class="option-card" id="chat-option">
+                    <div class="icon-container">
+                        <i class="fas fa-robot"></i>
+                    </div>
+                    <h3>Ask AI Assistant</h3>
+                    <p>Get personalized physiotherapy advice from our AI assistant</p>
+                    <button class="option-btn" onclick="window.location.href='chat.html'">Chat with AI</button>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>&copy; 2024 PhysioVeda. All rights reserved.</p>
+        </footer>
+    </div>
+</body>
+</html> 

@@ -1,0 +1,503 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Poppins', sans-serif;
+}
+
+body {
+    background: linear-gradient(135deg, #1a1c2c 0%, #4c3a51 100%);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    perspective: 1000px;
+    position: relative;
+    overflow-x: hidden;
+}
+
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at 50% 50%, rgba(111, 66, 193, 0.1) 0%, transparent 80%);
+    pointer-events: none;
+    z-index: 1;
+}
+
+.container {
+    width: 100%;
+    max-width: 1200px;
+    padding: 2rem;
+    text-align: center;
+    transform-style: preserve-3d;
+    position: relative;
+    z-index: 2;
+}
+
+header {
+    margin-bottom: 3rem;
+    text-align: center;
+    animation: floatIn 1s ease-out;
+    position: relative;
+}
+
+header::after {
+    content: '';
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100px;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, #9b4dca, transparent);
+    opacity: 0;
+    animation: fadeIn 1s ease-out forwards;
+    animation-delay: 1s;
+}
+
+.logo-container {
+    margin-bottom: 1rem;
+    text-align: center;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+}
+
+.logo-container::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 140px;
+    height: 140px;
+    background: radial-gradient(circle, rgba(52, 152, 219, 0.1) 0%, transparent 70%);
+    border-radius: 50%;
+    opacity: 0;
+    transition: all 0.3s ease;
+}
+
+.logo-container:hover::before {
+    opacity: 1;
+    width: 160px;
+    height: 160px;
+}
+
+.logo-container:hover {
+    transform: scale(1.05) rotate(5deg);
+}
+
+.logo {
+    width: 120px;
+    height: auto;
+    margin-bottom: 1rem;
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.1));
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    transform-origin: center;
+}
+
+.logo:hover {
+    filter: drop-shadow(0 8px 16px rgba(0,0,0,0.2)) brightness(1.1);
+}
+
+h1 {
+    font-size: 3.5rem;
+    color: #2c3e50;
+    margin-bottom: 0.5rem;
+    animation: fadeInDown 1s ease-out;
+    text-shadow: none;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    background: linear-gradient(45deg, #9b4dca, #ff6b6b);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-size: 200% 200%;
+}
+
+h1:hover {
+    text-shadow: 4px 4px 8px rgba(0,0,0,0.15);
+    transform: scale(1.02);
+    background-position: 100% 100%;
+}
+
+.tagline {
+    font-size: 1.2rem;
+    color: #b8c2cc;
+    margin-bottom: 2rem;
+    animation: fadeInUp 1s ease-out;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    display: inline-block;
+}
+
+.tagline::after {
+    content: '';
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: linear-gradient(90deg, #9b4dca, #ff6b6b);
+    transition: width 0.3s ease;
+}
+
+.tagline:hover {
+    transform: translateY(-2px);
+    color: #ff6b6b;
+}
+
+.tagline:hover::after {
+    width: 100%;
+}
+
+.welcome-section {
+    margin-bottom: 4rem;
+    animation: fadeIn 1s ease-out;
+    position: relative;
+    padding: 2rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.welcome-section:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-5px);
+}
+
+.welcome-section h2 {
+    font-size: 2.5rem;
+    color: #ff6b6b;
+    margin-bottom: 1rem;
+    animation: fadeInLeft 1s ease-out;
+    transition: transform 0.3s ease;
+}
+
+.welcome-section h2:hover {
+    transform: scale(1.02);
+}
+
+.welcome-section p {
+    font-size: 1.1rem;
+    color: #b8c2cc;
+    animation: fadeInRight 1s ease-out;
+    transition: all 0.3s ease;
+}
+
+.welcome-section p:hover {
+    color: #ff6b6b;
+    transform: translateY(-2px);
+}
+
+.options-section {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    flex-wrap: wrap;
+    margin-bottom: 3rem;
+    perspective: 1000px;
+}
+
+.option-card {
+    background: rgba(28, 25, 38, 0.95);
+    padding: 2rem;
+    border-radius: 15px;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    width: 300px;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    animation: fadeInUp 1s ease-out;
+    transform-style: preserve-3d;
+    position: relative;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.option-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(45deg, transparent 0%, rgba(155, 77, 202, 0.2) 50%, transparent 100%);
+    transform: translateX(-100%);
+    transition: transform 0.6s ease;
+}
+
+.option-card:hover::after {
+    transform: translateX(100%);
+}
+
+.option-card:hover {
+    transform: translateY(-15px) rotateX(5deg);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    background: rgba(28, 25, 38, 0.98);
+}
+
+.option-card h3 {
+    color: #ff6b6b;
+}
+
+.option-card p {
+    color: #b8c2cc;
+}
+
+.icon-container {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #9b4dca, #ff6b6b);
+    border-radius: 50%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 0 auto 1.5rem;
+    transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(155, 77, 202, 0.3);
+}
+
+.icon-container::before {
+    content: '';
+    position: absolute;
+    width: 150%;
+    height: 150%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+    top: -25%;
+    left: -25%;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.option-card:hover .icon-container::before {
+    opacity: 1;
+    animation: rotate 2s linear infinite;
+}
+
+.option-btn {
+    background: linear-gradient(135deg, #9b4dca, #ff6b6b);
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 4px 15px rgba(155, 77, 202, 0.3);
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    font-size: 0.9rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.option-btn i {
+    font-size: 1.1rem;
+    transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.option-btn::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, #ff6b6b, #9b4dca);
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+
+.option-btn::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.3) 0%, transparent 70%);
+    opacity: 0;
+    transform: scale(0);
+    transition: transform 0.6s ease, opacity 0.4s ease;
+}
+
+.option-btn:hover {
+    transform: scale(1.05) translateY(-2px);
+    box-shadow: 0 8px 20px rgba(155, 77, 202, 0.4),
+                0 0 30px rgba(255, 107, 107, 0.4);
+}
+
+.option-btn:hover::before {
+    opacity: 1;
+}
+
+.option-btn:hover::after {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.option-btn:hover i {
+    transform: rotate(360deg);
+}
+
+.option-btn:active {
+    transform: scale(0.95);
+    box-shadow: 0 4px 10px rgba(155, 77, 202, 0.3);
+}
+
+/* Add pulse animation to the button */
+@keyframes buttonPulse {
+    0% {
+        box-shadow: 0 4px 15px rgba(155, 77, 202, 0.3);
+    }
+    50% {
+        box-shadow: 0 4px 25px rgba(155, 77, 202, 0.5),
+                    0 0 20px rgba(255, 107, 107, 0.3);
+    }
+    100% {
+        box-shadow: 0 4px 15px rgba(155, 77, 202, 0.3);
+    }
+}
+
+.option-btn {
+    animation: buttonPulse 2s infinite;
+}
+
+@keyframes rotate {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Add new pulse animation */
+@keyframes pulse {
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+footer {
+    margin-top: 3rem;
+    color: #b8c2cc;
+    font-size: 0.9rem;
+    animation: fadeIn 1s ease-out;
+    transition: all 0.3s ease;
+}
+
+footer:hover {
+    transform: translateY(-2px);
+    color: #ff6b6b;
+}
+
+/* Enhanced Animations */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(30px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeInLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes fadeInRight {
+    from {
+        opacity: 0;
+        transform: translateX(50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes floatIn {
+    0% {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    50% {
+        transform: translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        padding: 1rem;
+    }
+
+    h1 {
+        font-size: 2.5rem;
+    }
+
+    .welcome-section h2 {
+        font-size: 2rem;
+    }
+
+    .options-section {
+        flex-direction: column;
+        align-items: center;
+    }
+
+    .option-card {
+        width: 100%;
+        max-width: 300px;
+    }
+} 
