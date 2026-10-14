@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>3D Model Selection - PhysioVeda</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <style>
+        #model-container {
+            width: 100%;
+            height: 80vh;
+            position: relative;
+            background: #f8f9fa;
+            border-radius: 15px;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        canvas {
+            width: 100% !important;
+            height: 100% !important;
+        }
+
+        .back-btn {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 0.8rem 1.5rem;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: background 0.3s ease, transform 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            z-index: 1000;
+        }
+
+        .back-btn:hover {
+            background: #2980b9;
+            transform: scale(1.05);
+        }
+
+        .controls {
+            position: absolute;
+            bottom: 2rem;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            padding: 1rem;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+
+        .controls button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            margin: 0 0.5rem;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .controls button:hover {
+            background: #2980b9;
+        }
+
+        .injury-point {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: #e74c3c;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+            z-index: 1000;
+            pointer-events: auto;
+            border: 3px solid white;
+            box-shadow: 0 0 6px rgba(0, 0, 0, 0.3);
+        }
+
+        .injury-point:hover {
+            transform: translate(-50%, -50%) scale(1.5) !important;
+        }
+
+        .injury-label {
+            position: absolute;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            white-space: nowrap;
+            left: 50%;
+            bottom: 100%;
+            transform: translateX(-50%);
+            margin-bottom: 8px;
+        }
+
+        .injury-point:hover .injury-label {
+            opacity: 1;
+        }
+
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #3498db;
+            font-size: 1.2rem;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <button class="back-btn" onclick="window.location.href='index.html'">
+        <i class="fas fa-arrow-left"></i> Back to Home
+    </button>
+
+    <div class="container">
+        <div id="model-container">
+            <div class="loading">Loading 3D Model...</div>
+        </div>
+        <div class="controls">
+            <button onclick="resetCamera()">Reset View</button>
+            <button onclick="toggleLabels()">Toggle Labels</button>
+        </div>
+    </div>
+
+    <script>
+        let scene, camera, renderer, controls;
+        let model;
+        let injuryPoints = {};
+        let labelsVisible = true;
+
+        // Add injury points to the model
+        function addInjuryPoints() {
+            const injuryPositions = {
+                neck: { x: 0.00, y: 0.72, z: 0 },
+                shoulder: { x: 0.2, y: 0.63, z: 0 },
+                elbow: { x: 0.3, y: 0.219, z: 0 },
+                wrist: { x: 0.40, y: -0.07, z: 0 },
+                knee: { x: 0.12, y: -0.46, z: 0 },
+                ankle: { x: 0.10, y: -.85, z: 0 }
+            };
+
+            for (const [injury, position] of Object.entries(injuryPositions)) {
+                const point = document.createElement('div');
+                point.className = 'injury-point';
+                point.style.left = '50%';
+                point.style.top = '50%';
+                
+                const label = document.createElement('div');
+                label.className = 'injury-label';
+                label.textContent = injury.charAt(0).toUpperCase() + injury.slice(1);
+                point.appendChild(label);
+
+                point.addEventListener('click', () => {
+                    window.location.href = `exercises.html?injury=${injury}`;
+                });
+
+                document.getElementById('model-container').appendChild(point);
+                injuryPoints[injury] = {
+                    element: point,
+                    position: position
+                };
+            }
+        }
+
+        // Update injury points position based on camera view
+        function updateInjuryPoints() {
+            const container = document.getElementById('model-container');
+            const containerRect = container.getBoundingClientRect();
+            const containerWidth = containerRect.width;
+            const containerHeight = containerRect.height;
+
+            for (const [injury, pointData] of Object.entries(injuryPoints)) {
+                const point = pointData.element;
+                const position = pointData.position;
+                
+                // Create a 3D vector for the injury point
+                const vector = new THREE.Vector3(position.x, position.y, position.z);
+                
+                // Get the model's world matrix to transform the point
+                if (model) {
+                    vector.applyMatrix4(model.matrixWorld);
+                }
+                
+                // Project the 3D position to 2D screen coordinates
+                vector.project(camera);
+                
+                // Convert to screen coordinates
+                const x = (vector.x + 1) / 2 * containerWidth;
+                const y = (-vector.y + 1) / 2 * containerHeight;
+                
+                // Update point position with transform origin to ensure smooth scaling
+                point.style.transform = 'translate(-50%, -50%)';
+                point.style.left = `${x}px`;
+                point.style.top = `${y}px`;
+                
+                // Show/hide point based on whether it's in front of the camera
+                const isBehindCamera = vector.z > 1;
+                point.style.display = isBehindCamera ? 'none' : 'block';
+                
+                // Optional: Adjust point size based on distance from camera
+                const distance = camera.position.distanceTo(new THREE.Vector3(position.x, position.y, position.z));
+                const scale = Math.max(0.5, 1 - (distance * 0.1));
+                point.style.transform += ` scale(${scale})`;
+            }
+        }
+
+        // Initialize the 3D scene
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf8f9fa);
+
+            // Get container dimensions
+            const container = document.getElementById('model-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            // Create camera
+            camera = new THREE.PerspectiveCamera(75, width / height, 0.1, 1000);
+            camera.position.set(0, 0, 5);
+
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            renderer.shadowMap.enabled = true;
+            container.appendChild(renderer.domElement);
+
+            // Add lights
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+            scene.add(ambientLight);
+
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(5, 5, 5);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+
+            // Add controls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.minDistance = 2;
+            controls.maxDistance = 10;
+            controls.target.set(0, 0, 0);
+
+            // Add event listener for camera changes
+            controls.addEventListener('change', () => {
+                requestAnimationFrame(updateInjuryPoints);
+            });
+
+            // Load the 3D model
+            const loader = new THREE.GLTFLoader();
+            loader.load(
+                'models/human_skeleton.glb',
+                function (gltf) {
+                    model = gltf.scene;
+                    scene.add(model);
+                    
+                    // Center and scale the model
+                    const box = new THREE.Box3().setFromObject(model);
+                    const center = box.getCenter(new THREE.Vector3());
+                    const size = box.getSize(new THREE.Vector3());
+                    
+                    const maxDim = Math.max(size.x, size.y, size.z);
+                    const scale = 3 / maxDim;
+                    model.scale.setScalar(scale);
+                    
+                    // Center the model
+                    model.position.set(0, 0, 0);
+                    
+                    // Add injury points after model is loaded
+                    addInjuryPoints();
+                    
+                    // Remove loading message
+                    const loadingElement = document.querySelector('.loading');
+                    if (loadingElement) {
+                        loadingElement.remove();
+                    }
+                },
+                // Progress callback
+                function (xhr) {
+                    console.log((xhr.loaded / xhr.total * 100) + '% loaded');
+                },
+                // Error callback
+                function (error) {
+                    console.error('Error loading model:', error);
+                    const loadingElement = document.querySelector('.loading');
+                    if (loadingElement) {
+                        loadingElement.textContent = 'Error loading model. Please try again.';
+                    }
+                }
+            );
+
+            // Handle window resize
+            window.addEventListener('resize', onWindowResize, false);
+        }
+
+        // Reset camera position
+        function resetCamera() {
+            camera.position.set(0, 0, 5);
+            camera.lookAt(0, 0, 0);
+            controls.target.set(0, 0, 0);
+            controls.update();
+        }
+
+        // Toggle injury point labels
+        function toggleLabels() {
+            labelsVisible = !labelsVisible;
+            for (const point of Object.values(injuryPoints)) {
+                const label = point.element.querySelector('.injury-label');
+                label.style.opacity = labelsVisible ? 1 : 0;
+            }
+        }
+
+        // Handle window resize
+        function onWindowResize() {
+            const container = document.getElementById('model-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+            updateInjuryPoints();
+        }
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            controls.update();
+            renderer.render(scene, camera);
+            updateInjuryPoints();
+        }
+
+        // Initialize and start animation
+        init();
+        animate();
+    </script>
+</body>
+</html> 
